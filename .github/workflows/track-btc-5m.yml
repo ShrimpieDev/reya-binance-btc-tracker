@@ -1,0 +1,48 @@
+name: Track BTC 5m
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          
+      - name: Run tracking script
+        run: |
+          python scripts/compare_prices_5m.py
+        env:
+          # Define default environment variables
+          REYA_SYMBOL: ${{ vars.REYA_SYMBOL || 'BTCRUSDPERP' }}
+          BINANCE_SYMBOL: ${{ vars.BINANCE_SYMBOL || 'BTCUSDT' }}
+          # For 451 bypass, define BINANCE_BASE_URL as a repository variable or secret.
+          BINANCE_BASE_URL: ${{ secrets.BINANCE_BASE_URL || 'https://fapi.binance.com' }}
+          
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update 1m BTC comparison (5m runner)"
+            git push
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
